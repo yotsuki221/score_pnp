@@ -29,5 +29,5 @@ measurement:
     sigma: 0.02
 
 model:
-  pretrained_check_point: ./pretrained_models/rdunet/rdunet_sigma25.pth
+  pretrained_check_point: ./pretrained_models/rdunet/rdunet_paper.pth
   image_size: 256
