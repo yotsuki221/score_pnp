@@ -87,7 +87,7 @@ def second_pnpadmm(noise_level_img, max_iter, denoising_strength_sigma_at_begin,
     elif denoiser_network_type == "rdunet":
         rdunet_denoiser = RDUNetDenoiser(
             channels=3,
-            base_filters=64,
+            base_filters=128,
             pretrained=pretrained_check_point,
             device=device,
         )
