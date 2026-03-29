@@ -1,0 +1,33 @@
+# configs/pnpadmm_rdunet.yaml
+machinesetup:
+  gpu_idx: 0
+  save_dir: ./experiment_result
+
+data:
+  name: imagenet
+  dir: ./data/single_image/
+
+plugandplay_hyperparams:
+  iterative_algorithms: pnpadmm
+  max_iter: 50
+  denoising_strength_sigma_at_begin: 25.0     # ← 注意: ここは 0-255 前提で /255 される箇所がある
+  denoising_strength_sigma_at_end: 25.0
+  lambda_: 0.2
+  gamma: 1.0
+  zeta: N/A
+  denoiser_network_type: rdunet
+  save_image: true
+
+measurement:
+  operator:
+    name: deblur
+    in_shape: !!python/list [1, 3, 256, 256]
+    kernel_index: 7
+    kernel_dir: ./data/blur_kernels
+  noise:
+    name: gaussian
+    sigma: 0.02
+
+model:
+  pretrained_check_point: ./pretrained_models/rdunet/rdunet_sigma25.pth
+  image_size: 256
