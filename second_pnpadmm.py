@@ -14,6 +14,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader
 from deepinv.models import DRUNet, DnCNN
+from deepinv.models.rdunet_custom import RDUNetDenoiser 
 from deepinv.sampling import DiffPIR, DPS
 from deepinv.optim.data_fidelity import L2
 from deepinv.optim.prior import PnP
@@ -78,17 +79,21 @@ def second_pnpadmm(noise_level_img, max_iter, denoising_strength_sigma_at_begin,
     # (Step 2) Declare model
     # ------------
     if (denoiser_network_type == "score") and (diffusion_config is not None):
-        score = create_vp_model(**diffusion_config)
-        score = score.to(device)
-        score.eval()
+        score = create_vp_model(**diffusion_config).to(device).eval()
     elif denoiser_network_type == "dncnn":
         dncnn_denoiser = DnCNN(pretrained=pretrained_check_point, device=device)
-
     elif denoiser_network_type == "drunet":
         drunet_denoiser = DRUNet(pretrained=pretrained_check_point, device=device)
-
+    elif denoiser_network_type == "rdunet":
+        rdunet_denoiser = RDUNetDenoiser(
+            channels=3,
+            base_filters=64,
+            pretrained=pretrained_check_point,
+            device=device,
+        )
     else:
         raise ValueError("Given noise perturbation type is not existing.")
+    
     # ------------
     # (Step 3) Inverse problem setup & data processing
     # ------------
@@ -136,14 +141,13 @@ def second_pnpadmm(noise_level_img, max_iter, denoising_strength_sigma_at_begin,
         params_algo = {"stepsize": tau, "g_param": sigma_denoiser}
 
         early_stop = False  # Do not stop algorithm with convergence criteria
-        if denoiser_network_type in ["score"]:
-            prior = PnP(denoiser=score, is_diffusion_model = True, diffusion_model_type = denoiser_network_type, diffusion_config=diffusion_config, device = device)
+        if denoiser_network_type == "score":
+            prior = PnP(denoiser=score, is_diffusion_model=True, diffusion_model_type=denoiser_network_type,
+                        diffusion_config=diffusion_config, device=device)
         elif denoiser_network_type == "dncnn":
             prior = PnP(denoiser=dncnn_denoiser)
-        elif denoiser_network_type == "drunet":
-            prior = PnP(denoiser=drunet_denoiser)
-        else:
-            raise ValueError("Check the denoiser_network_type")
+        elif denoiser_network_type in ["drunet", "rdunet"]:
+            prior = PnP(denoiser=drunet_denoiser if denoiser_network_type=="drunet" else rdunet_denoiser)
 
         # instantiate the algorithm class to solve the IP problem.
         model = optim_builder(
@@ -173,6 +177,7 @@ def second_pnpadmm(noise_level_img, max_iter, denoising_strength_sigma_at_begin,
         test_dataloader=dataloader,
         physics=p,
         metrics=[dinv.loss.PSNR(), dinv.loss.SSIM(), dinv.loss.LPIPS(device = device)],
+        #metrics=[dinv.loss.PSNR(), dinv.loss.SSIM()],
         device=device,
         plot_images=plot_images,
         save_folder=save_folder,
